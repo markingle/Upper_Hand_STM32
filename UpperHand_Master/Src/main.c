@@ -217,36 +217,17 @@ int main(void)
   debugPrint(&huart1, "\r\n");*/
 //************************************************************************
 
-  if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
+  //if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
 
   valByte = (uint8_t)((voltage/3.3)*255);
 
   while (1)
   {
-	  if (MASTER==1)
-	  {
-		  playSound();
-	  } else {
-	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
-	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
-	  {
-		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
-		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
-	  }
-	  if (MASTER==1)
-	  {
-		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);  //Need to call UART_Receive to get the first event....Callback will start it back after the \n (10);
-	  } else {
-		  HAL_GPIO_TogglePin (GPIOB, R17_Orange_Pin);
-		  HAL_DELAY(200);
-		  debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
-	  }
 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+	  debugPrint(&huart1, "Master Talking Here!!!");
   }
   /* USER CODE END 3 */
 }
-}
-
 /**
   * @brief System Clock Configuration
   * @retval None
