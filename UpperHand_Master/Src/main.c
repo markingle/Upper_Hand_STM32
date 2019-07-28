@@ -25,7 +25,7 @@
 /* USER CODE BEGIN Includes */
 
 #define   SINE_RES         2048			// Waveform resolution
-#define	MASTER	1		//Define the role before compiling
+#define	MASTER	1		//Define the role before compiling - 0=Slave; 1=Master
 
 #include "string.h"
 
@@ -105,6 +105,7 @@ void playSound(void)
 {
 	while(indexx<127)
 		  {
+		 	 HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
 		  	 HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_1,DAC_ALIGN_8B_R,function[indexx]);
 		  	 indexx++;
 		  	 while(delay<setpoint)
@@ -121,29 +122,23 @@ void playSound(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 {
-	//HAL_UART_Transmit(&huart1, (uint8_t *) RxTx_Response, 10,0xFFFF);
-	//HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
-	//HAL_Delay(500);
-	//HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_bufferdata, 18);
-	//HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
-	//__NOP();
-
-	//Interrupt callback routine
 	    uint8_t i;
 	    if (huart->Instance == USART1)  //current UART
 	        {
 	        if (Rx_indx==0) {for (i=0;i<100;i++) Rx_Buffer[i]=0;}   //clear Rx_Buffer before receiving new data
 
-	        if (Rx_data[0]!=10) //if received data different from ascii 10 (enter)
+	        if (Rx_data[0]==49) //if received data different from ascii 10 (enter)
 	            {
-	            Rx_Buffer[Rx_indx++]=Rx_data[0];    //add data to Rx_Buffer
+	            playSound();   //add data to Rx_Buffer
+	            //HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
 	            }
 	        else            //if received data = 13
 	            {
 	            Rx_indx=0;
 	            Transfer_cplt=1;//transfer complete, data is ready to read
+	            HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
 	            }
-
+	        HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
 	        HAL_UART_Receive_IT(&huart1, Rx_data, 1);   //activate UART receive interrupt every time
 	        }
 
@@ -151,7 +146,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
+	//NOT SURE THIS IS NEEDED......LEAVE FOR NOW
+	//HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
+	//x = huart->ErrorCode;
 }
 /* USER CODE END 0 */
 
@@ -225,22 +222,19 @@ int main(void)
   {
 	  if (MASTER==1)
 	  {
-		  playSound();// comment
+		  //playSound();// comment
+		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
 	  } else {
 	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
 	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
 	  {
 		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
 		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
-	  }
-	  if (MASTER==1)//
-	  {
-		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);  //Need to call UART_Receive to get the first event....Callback will start it back after the \n (10);
 	  } else {
-		  HAL_GPIO_TogglePin (GPIOB, R17_Orange_Pin);
-		  HAL_DELAY(200);
-		  debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
+		  //HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
+		  //debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
 	  }
+	  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
   }
   /* USER CODE END 3 */
