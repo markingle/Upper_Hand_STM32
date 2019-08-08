@@ -72,6 +72,8 @@ const uint16_t function2[64] = { 0x7fd,0x8c5,0x98c,0xa4f,0xb0c,0xbc1,0xc6d,0xd0e
 /* Private variables ---------------------------------------------------------*/
 DAC_HandleTypeDef hdac1;
 
+SPI_HandleTypeDef hspi1;
+
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -94,6 +96,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_DAC1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -186,59 +189,21 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
-  if (MASTER==1) {MX_DAC1_Init();}
+  MX_DAC1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
-  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);  //Start up indicator
-  HAL_Delay(1500);
-  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);  //Turn off for other testing....
-  HAL_GPIO_WritePin (GPIOA, HC05_KEY_Pin, GPIO_PIN_RESET); //Set this to HIGH to put HC05 in Program Mode
-  HAL_Delay(1000);
-  HAL_GPIO_WritePin (GPIOA, HC05_Switch_Pin, GPIO_PIN_SET); //Power up the HC05
-  HAL_Delay(1000);
-
-//********THIS CODE IS USED TO SET THE ROLE OF THE HC05*********************
-  /*debugPrint(&huart1, "AT+ROLE=1");
-  debugPrint(&huart1, "\r\n");
-  HAL_Delay(1000);
-  debugPrint(&huart1, "AT+CMODE=0");
-  debugPrint(&huart1, "\r\n");
-  HAL_Delay(1000);
-  debugPrint(&huart1, "AT+BIND=18,e4,34d7c7");// Slave address
-  debugPrint(&huart1, "\r\n");*/
-//************************************************************************
-
-  if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
-
-  valByte = (uint8_t)((voltage/3.3)*255);
-
   while (1)
   {
-	  if (MASTER==1)
-	  {
-		  //playSound();// comment
-		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
-	  } else {
-	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
-	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
-	  {
-		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
-		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
-	  } else {
-		  //HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
-		  //debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
-	  }
-	  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
-	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
 }
 
 /**
@@ -322,6 +287,46 @@ static void MX_DAC1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -368,6 +373,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(HC05_Switch_GPIO_Port, HC05_Switch_Pin, GPIO_PIN_RESET);
@@ -377,6 +383,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(R17_Orange_GPIO_Port, R17_Orange_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : HC05_Switch_Pin */
   GPIO_InitStruct.Pin = HC05_Switch_Pin;
@@ -404,6 +413,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(R17_Orange_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Chip_Select_Pin */
+  GPIO_InitStruct.Pin = Chip_Select_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(Chip_Select_GPIO_Port, &GPIO_InitStruct);
 
 }
 
