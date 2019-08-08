@@ -189,21 +189,63 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
-  MX_DAC1_Init();
+  //MX_DAC1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  if (MASTER==1) {MX_DAC1_Init();}
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);  //Start up indicator
+  HAL_Delay(1500);
+  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);  //Turn off for other testing....
+  HAL_GPIO_WritePin (GPIOA, HC05_KEY_Pin, GPIO_PIN_RESET); //Set this to HIGH to put HC05 in Program Mode
+  HAL_Delay(1000);
+  HAL_GPIO_WritePin (GPIOA, HC05_Switch_Pin, GPIO_PIN_SET); //Power up the HC05
+  HAL_Delay(1000);
+
+  //********THIS CODE IS USED TO SET THE ROLE OF THE HC05*********************
+    /*debugPrint(&huart1, "AT+ROLE=1");
+    debugPrint(&huart1, "\r\n");
+    HAL_Delay(1000);
+    debugPrint(&huart1, "AT+CMODE=0");
+    debugPrint(&huart1, "\r\n");
+    HAL_Delay(1000);
+    debugPrint(&huart1, "AT+BIND=18,e4,34d7c7");// Slave address
+    debugPrint(&huart1, "\r\n");*/
+  //************************************************************************
+
+    if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
+
+    valByte = (uint8_t)((voltage/3.3)*255);
+
   while (1)
   {
-    /* USER CODE END WHILE */
+	  if (MASTER==1)
+	     /* USER CODE END WHILE */
+	 	  {
 
-    /* USER CODE BEGIN 3 */
+	 		  //playSound();// comment
+	     /* USER CODE BEGIN 3 */
+	 		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+	 	  } else {
+	 	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
+	 	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
+	 	  {
+	 		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
+	 		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
+	 	  } else {
+	 		  //HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
+	 		  //debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
+	 	  }
+	 	  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
+	 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
   }
   /* USER CODE END 3 */
+}
 }
 
 /**
