@@ -109,7 +109,7 @@ uint8_t spiData[2];
 void WriteSPI(uint8_t data , uint8_t addr)
 {
 	addr = addr & 0x7F;
-	//Turn on SPI Read
+	//Turn on SPI Re
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
 	HAL_Delay(10);
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
