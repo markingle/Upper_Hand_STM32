@@ -68,7 +68,7 @@ void Error_Handler(void);
 #define Speaker_GPIO_Port GPIOA
 #define R17_Orange_Pin GPIO_PIN_10
 #define R17_Orange_GPIO_Port GPIOB
-#define Chip_Select_Pin GPIO_PIN_9
+#define Chip_Select_Pin GPIO_PIN_8
 #define Chip_Select_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 
