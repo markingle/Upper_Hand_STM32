@@ -74,6 +74,8 @@ DAC_HandleTypeDef hdac1;
 
 SPI_HandleTypeDef hspi2;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -97,6 +99,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -104,22 +107,48 @@ static void MX_SPI2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-uint8_t spiData[2];
+uint8_t spiTXData[2];
+uint8_t spiRXData[2];
+uint8_t command;
+uint8_t data;
 
-void WriteSPI(uint8_t data , uint8_t addr)
+//void WriteSPI(uint8_t data , uint8_t addr)
+void WriteSPI()
 {
-	addr = addr & 0x7F;
-	//Turn on SPI Re
-	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
-	HAL_Delay(10);
+	//addr = addr & 0x7F;
+	//Turn on SPI Read
+	//HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
+	//HAL_Delay(10);
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
 	//Transmit the register to read
-	HAL_SPI
-	  spiData[0] = 0x3F;
-	  HAL_SPI_Transmit(&hspi2, spiData, 1, 10);
-	  HAL_SPI_Receive(&hspi2, &spiData[1], 1, 10);
+	spiTXData[0] = 0x0B;
+	spiTXData[1] = 0x00;
+	data = 0x01;
+	HAL_SPI_Transmit(&hspi2, spiTXData, 2, 50);
+	//HAL_Delay(10);
+	//HAL_SPI_Transmit(&hspi2, &data, 1, 10);
+	//HAL_SPI_Receive(&hspi2, &spiData[1], 1, 10);
 
-	  HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
+
+	  /* USER CODE END 2 */
+}
+
+void ReadSPI()
+{
+	//addr = addr & 0x7F;
+	//Turn on SPI Read
+	//HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
+	//HAL_Delay(10);
+	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
+	//Transmit the register to read
+	command = 0x0B|0x80;
+	HAL_SPI_Transmit(&hspi2, &command, 1, 50);
+
+	//Receive the data from the LDC
+	HAL_SPI_Receive(&hspi2, spiRXData, 1, 50);
+
+	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
 
 	  /* USER CODE END 2 */
 }
@@ -210,8 +239,10 @@ int main(void)
   MX_USART1_UART_Init();
   //MX_DAC1_Init();
   MX_SPI2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   if (MASTER==1) {MX_DAC1_Init();}
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -238,7 +269,7 @@ int main(void)
     if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
 
     valByte = (uint8_t)((voltage/3.3)*255);
-
+    WriteSPI();
   while (1)
   {
 	  if (MASTER==1)
@@ -246,7 +277,9 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  {
-	 		  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+	 		 HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+	 		 ReadSPI();
+	 		 //HAL_Delay(500);
 	 	  } else {
 	 	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
 	 	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
@@ -259,6 +292,7 @@ int main(void)
 	 	  }
 	 	  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
 	 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+
 	 	  }
   	  }
 }
@@ -368,7 +402,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -382,6 +416,53 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 0;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR0;
+  if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -445,7 +526,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(R17_Orange_GPIO_Port, R17_Orange_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : PF0 */
   GPIO_InitStruct.Pin = GPIO_PIN_0;
