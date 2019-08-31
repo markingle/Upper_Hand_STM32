@@ -64,8 +64,6 @@ void Error_Handler(void);
 #define HC05_Switch_GPIO_Port GPIOA
 #define HC05_KEY_Pin GPIO_PIN_1
 #define HC05_KEY_GPIO_Port GPIOA
-#define Metal_Detected_Pin_Pin GPIO_PIN_3
-#define Metal_Detected_Pin_GPIO_Port GPIOA
 #define Speaker_Pin GPIO_PIN_4
 #define Speaker_GPIO_Port GPIOA
 #define R17_Orange_Pin GPIO_PIN_10

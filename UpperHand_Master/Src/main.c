@@ -78,7 +78,6 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t Rx_data[2];
@@ -104,7 +103,6 @@ static void MX_USART1_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -141,11 +139,11 @@ void ReadSPI()
 	command = 0x80|0X21;
 	HAL_SPI_Transmit(&hspi2, &command, 1, 50);
 
-	//Receive the data from the LDC
-	HAL_SPI_Receive(&hspi2, spiRXData, 1, 50);
-
 	command = 0x80|0x22;
 	HAL_SPI_Transmit(&hspi2, &command, 1, 50);
+
+	//Receive the data from the LDC
+	HAL_SPI_Receive(&hspi2, spiRXData, 1, 50);
 
 	//command = 0x80|0x23;
 	//HAL_SPI_Transmit(&hspi2, &command, 1, 50);
@@ -261,7 +259,6 @@ int main(void)
   //MX_DAC1_Init();
   //MX_SPI2_Init();
   MX_TIM3_Init();
-  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   if (MASTER==1) {MX_DAC1_Init();}
   if (MASTER==0) {MX_SPI2_Init();}
@@ -312,20 +309,9 @@ int main(void)
 
 	  	  {
 	 		 HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
-	 	  } else {
-	 	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
-	 	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
-	 	  {
-	 		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
-	 		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
-	 	  } else {
-	 		  //HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
-	 		  //debugPrint(&huart1, "0"); //Send a 1 to indicate that metal was detected
-	 	  }
-	 	  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
-	 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
-
-	 	  }
+	 		 HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
+	 		 HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
+	  	  }
 	  if (MASTER==0)
 		  {
 		  pwm = 25;
@@ -333,11 +319,12 @@ int main(void)
 		  HAL_Delay(10);
 		  ReadSPI();
 		  HAL_Delay(10);
-		  if (spiRXData[0] > 130)
+		  if (spiRXData[0]!=210)
 		  		 	  {
 		  		 		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
 		  		 		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
 		  		 	  } else {
+		  		 		HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);
 		  		 		 debugPrint(&huart1, "0"); //Send a 0 to indicate that metal was NOT detected
 		  		 	  }
 		  }
@@ -562,41 +549,6 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 38400;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -642,12 +594,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(HC05_KEY_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : Metal_Detected_Pin_Pin */
-  GPIO_InitStruct.Pin = Metal_Detected_Pin_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(Metal_Detected_Pin_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : R17_Orange_Pin */
   GPIO_InitStruct.Pin = R17_Orange_Pin;
