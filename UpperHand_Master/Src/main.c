@@ -23,9 +23,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "LDC1101.h"
 
 #define   SINE_RES         2048			// Waveform resolution
-#define	MASTER	1		//Define the role before compiling - 0=Slave; 1=Master
+#define	MASTER	0		//Define the role before compiling - 0=Slave(Board with "S"); 1=Master(Board with "M")
 
 #include "string.h"
 
@@ -74,9 +75,10 @@ DAC_HandleTypeDef hdac1;
 
 SPI_HandleTypeDef hspi2;
 
-TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t Rx_data[2];
@@ -85,6 +87,8 @@ uint8_t RxTx_Response[] = "Gotcha!!!\r\n";
 
 float voltage = 2.2;
 uint8_t valByte;
+
+int pwm = 0;
 
 //Variables for DAC
 uint8_t indexx=0;
@@ -99,7 +103,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_TIM1_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -112,46 +117,62 @@ uint8_t spiRXData[2];
 uint8_t command;
 uint8_t data;
 
-//void WriteSPI(uint8_t data , uint8_t addr)
-void WriteSPI()
+void WriteSPI(uint8_t data , uint8_t addr)
+//void WriteSPI()
 {
-	//addr = addr & 0x7F;
-	//Turn on SPI Read
-	//HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
-	//HAL_Delay(10);
+
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
-	//Transmit the register to read
-	spiTXData[0] = 0x0B;
-	spiTXData[1] = 0x00;
-	data = 0x01;
+	//Transmit the register to write
+	spiTXData[0] = addr & 0x7F;
+	spiTXData[1] = data;
+	//data = 0x01;
 	HAL_SPI_Transmit(&hspi2, spiTXData, 2, 50);
-	//HAL_Delay(10);
-	//HAL_SPI_Transmit(&hspi2, &data, 1, 10);
-	//HAL_SPI_Receive(&hspi2, &spiData[1], 1, 10);
 
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
+	HAL_Delay(500);
 
 	  /* USER CODE END 2 */
 }
 
 void ReadSPI()
 {
-	//addr = addr & 0x7F;
-	//Turn on SPI Read
-	//HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
-	//HAL_Delay(10);
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_RESET);
 	//Transmit the register to read
-	command = 0x0B|0x80;
+	command = 0x80|0X21;
 	HAL_SPI_Transmit(&hspi2, &command, 1, 50);
 
 	//Receive the data from the LDC
 	HAL_SPI_Receive(&hspi2, spiRXData, 1, 50);
 
+	command = 0x80|0x22;
+	HAL_SPI_Transmit(&hspi2, &command, 1, 50);
+
+	//command = 0x80|0x23;
+	//HAL_SPI_Transmit(&hspi2, &command, 1, 50);
+
+	//command = 0x80|0x24;
+	//HAL_SPI_Transmit(&hspi2, &command, 1, 50);
+
 	HAL_GPIO_WritePin(Chip_Select_GPIO_Port, Chip_Select_Pin, GPIO_PIN_SET);
 
 	  /* USER CODE END 2 */
 }
+
+void Config_Func_Mode(uint8_t mode)
+{
+	WriteSPI(mode, 0x0B);
+}
+
+void LDC_Init()
+{
+  WriteSPI(0x36, LDC1101_CMD_RP);
+  WriteSPI(0xDE, LDC1101_CMD_TC1);
+  WriteSPI(0xFE, LDC1101_CMD_TC2);
+  WriteSPI(0xD7, LDC1101_CMD_DIGCONFIG);
+  WriteSPI(0x00, LDC1101_CMD_ALTCONFIG);
+  WriteSPI(0x00, LDC1101_CMD_D_CONFIG);
+}
+
 void playSound(void)
 {
 	while(indexx<127)
@@ -238,22 +259,26 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   //MX_DAC1_Init();
-  MX_SPI2_Init();
-  MX_TIM1_Init();
+  //MX_SPI2_Init();
+  MX_TIM3_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   if (MASTER==1) {MX_DAC1_Init();}
+  if (MASTER==0) {MX_SPI2_Init();}
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+
   HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);  //Start up indicator
-  HAL_Delay(1500);
+  HAL_Delay(500);
   HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_RESET);  //Turn off for other testing....
   HAL_GPIO_WritePin (GPIOA, HC05_KEY_Pin, GPIO_PIN_RESET); //Set this to HIGH to put HC05 in Program Mode
-  HAL_Delay(1000);
+  HAL_Delay(200);
   HAL_GPIO_WritePin (GPIOA, HC05_Switch_Pin, GPIO_PIN_SET); //Power up the HC05
-  HAL_Delay(1000);
+  HAL_Delay(200);
 
   //********THIS CODE IS USED TO SET THE ROLE OF THE HC05*********************
     /*debugPrint(&huart1, "AT+ROLE=1");
@@ -269,17 +294,24 @@ int main(void)
     if (MASTER==1) {HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);}
 
     valByte = (uint8_t)((voltage/3.3)*255);
-    WriteSPI();
+
+    if (MASTER==0)
+    {
+    	Config_Func_Mode(SLEEP_MODE);
+    	LDC_Init();
+    	Config_Func_Mode(ACTIVE_MODE);
+	}
+
+
   while (1)
   {
 	  if (MASTER==1)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  {
+
+	  	  {
 	 		 HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
-	 		 ReadSPI();
-	 		 //HAL_Delay(500);
 	 	  } else {
 	 	  //******THIS CODE IS FOR TESTING AN EVENT FROM THE SLAVE....REMOVE IN FINAL RELEASE TO JESSE
 	 	  if (HAL_GPIO_ReadPin(GPIOA, Metal_Detected_Pin_Pin))
@@ -294,8 +326,24 @@ int main(void)
 	 	  HAL_UART_Receive_IT(&huart1, (uint8_t *) Rx_data, 1);
 
 	 	  }
-  	  }
+	  if (MASTER==0)
+		  {
+		  pwm = 25;
+		  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pwm);
+		  HAL_Delay(10);
+		  ReadSPI();
+		  HAL_Delay(10);
+		  if (spiRXData[0] > 130)
+		  		 	  {
+		  		 		  HAL_GPIO_WritePin (GPIOB, R17_Orange_Pin, GPIO_PIN_SET);
+		  		 		  debugPrint(&huart1, "1"); //Send a 1 to indicate that metal was detected
+		  		 	  } else {
+		  		 		 debugPrint(&huart1, "0"); //Send a 0 to indicate that metal was NOT detected
+		  		 	  }
+		  }
+  }
 }
+
   /* USER CODE END 3 */
 
 
@@ -420,49 +468,61 @@ static void MX_SPI2_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
+  * @brief TIM3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM1_Init(void)
+static void MX_TIM3_Init(void)
 {
 
-  /* USER CODE BEGIN TIM1_Init 0 */
+  /* USER CODE BEGIN TIM3_Init 0 */
 
-  /* USER CODE END TIM1_Init 0 */
+  /* USER CODE END TIM3_Init 0 */
 
-  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM1_Init 1 */
+  /* USER CODE BEGIN TIM3_Init 1 */
 
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 100;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 100;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
-  sSlaveConfig.InputTrigger = TIM_TS_ITR0;
-  if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM1_Init 2 */
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
 
-  /* USER CODE END TIM1_Init 2 */
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -498,6 +558,41 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 38400;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
